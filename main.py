@@ -117,9 +117,9 @@ def get_wage_sj():
     return wage
 
 
-def work_statistic(job,title):
+def display_statistics_table(statistic_wage, title):
     table = [['Язык программирования','Вакансий найдено','Вакансий обработано','Средняя зарплата']]
-    for item in job.items():
+    for item in statistic_wage.items():
         found, processed, salary = item[1].values()
         table_value = [item[0],found,processed,salary]
         table.append(table_value)
@@ -132,9 +132,8 @@ def work_statistic(job,title):
 if __name__ == '__main__':
     env = Env()
     load_dotenv(find_dotenv())
-
     try:
-        work_statistic(get_wage_hh(),'HeadHunter Moscow')
-        work_statistic(get_wage_sj(),'SuperJob Moscow')
+        display_statistics_table(get_wage_hh(),'HeadHunter Moscow')
+        display_statistics_table(get_wage_sj(),'SuperJob Moscow')
     except requests.exceptions.HTTPError as error:
         print(f"Ошибка {error.response.text}")
