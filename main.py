@@ -7,7 +7,8 @@ import os
 
 INDUSTRY = 48
 # POPULAR_LANGUAGES = ['JavaScript', 'Java', 'Python', 'Ruby', 'PHP', 'C++', 'CSS', 'C#', 'GO']
-POPULAR_LANGUAGES = ['JavaScript']
+POPULAR_LANGUAGES = ['C#']
+
 
 
 def predict_rub_salary(vacancy: dict):
@@ -35,28 +36,36 @@ def salary_statistics_hh(location):
     wage = {}
     unix_time = convert_to_unix_time()
     for language in POPULAR_LANGUAGES:
-        payload = {'text': f"Программист {language}", 'area': location, 'date_published_from': unix_time}
-        response = requests.get(url, payload)
-        response.raise_for_status()
         page = 0
+        payload = {
+                    'text': f"Программист {language}",
+                    'area': location,
+                    'date_published_from': unix_time,
+                    'page': page
+                    }
         vacancies_processed = 0
-        salary = 0
-        vacancies_found = response.json()['found']
-        jobs = response.json()['items']
-        total_pages = response.json()['pages']
+        salary_statistics = 0
+        total_pages = 1
         while page < total_pages:
+            response = requests.get(url, payload)
+            response.raise_for_status()
+            page = payload['page']
+            vacancies_found = response.json()['found']
+            jobs = response.json()['items']
+            total_pages = response.json()['pages']
             for job in jobs:
-                pay = predict_rub_salary(job['salary'])
-                if pay:
-                    salary = salary + pay
+                salary = predict_rub_salary(job['salary'])
+                if salary:
+                    salary_statistics = salary_statistics + salary
                     vacancies_processed += 1
             page += 1
+            payload['page'] = page
         if vacancies_processed:
-            salary = int(salary/vacancies_processed)
+            salary_statistics = int(salary_statistics/vacancies_processed)
         statistics = {
             'vacancies_found': vacancies_found,
             'vacancies_processed': vacancies_processed,
-            'average_salary': salary,
+            'average_salary': salary_statistics,
         }
         wage[language] = statistics
     return wage
@@ -78,33 +87,33 @@ def salary_statistics_sj(location, api_key):
             'town': location,
             'page': 0
         }
-        salary = 0
+        salary_statistics = 0
         vacancies_processed = 0
         while True:
             response = requests.get(url, headers=headers, params=payload)
             response.raise_for_status()
-            salary_information = response.json()
+            salary = response.json()
             page = payload['page']
             total_vacancies = response.json()['total']
-            for job in salary_information['objects']:
-                pay_for_work = {
+            for job in salary['objects']:
+                job_salary = {
                                 'currency': str(job['currency']).upper().replace('RUB', 'RUR'),
                                 'from': job['payment_from'],
                                 'to': job['payment_to']
                                 }
-                pay = predict_rub_salary(pay_for_work)
-                if pay:
-                    salary = salary + int(pay)
+                salary_js = predict_rub_salary(job_salary)
+                if salary_js:
+                    salary_statistics = salary_statistics + int(salary_js)
                     vacancies_processed += 1
-            if not salary_information['more']:
+            if not salary['more']:
                 break
             payload['page'] = page + 1
         if vacancies_processed:
-            salary = int(salary/vacancies_processed)
+            salary_statistics = int(salary_statistics/vacancies_processed)
         statistics = {
             'vacancies_found': total_vacancies,
             'vacancies_processed': vacancies_processed,
-            'average_salary': salary,
+            'average_salary': salary_statistics,
         }
         wage[language] = statistics
     return wage
