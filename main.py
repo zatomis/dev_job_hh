@@ -3,23 +3,25 @@ from terminaltables import DoubleTable
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime, timedelta
 import time
-from environs import Env
+import os
 
-POPULAR_LANGUAGES = ['C++']
 INDUSTRY = 48
 # POPULAR_LANGUAGES = ['JavaScript', 'Java', 'Python', 'Ruby', 'PHP', 'C++', 'CSS', 'C#', 'GO']
+POPULAR_LANGUAGES = ['JavaScript']
 
 
 def predict_rub_salary(vacancy: dict):
     if vacancy:
         if vacancy['currency'] != 'RUR':
             return None
+        if vacancy['from'] and vacancy['to']:
+            return int((vacancy['from'] + vacancy['to']) / 2)
         elif vacancy['from']:
             return int(vacancy['from'] * 1.2)
         elif vacancy['to']:
             return int(vacancy['to'] * 0.8)
         else:
-            return int((vacancy['from'] * vacancy['to']) / 2)
+            return None
     else:
         return None
 
@@ -28,10 +30,7 @@ def convert_to_unix_time():
     return int(time.mktime((datetime.now() - timedelta(days=30)).timetuple()))
 
 
-def get_wage_hh(location):
-    """
-    Получить зарплату HH
-    """
+def salary_statistics_hh(location):
     url = f"https://api.hh.ru/vacancies"
     wage = {}
     unix_time = convert_to_unix_time()
@@ -63,10 +62,7 @@ def get_wage_hh(location):
     return wage
 
 
-def get_wage_sj(location, api_key):
-    """
-    Получить зарплату SJ
-    """
+def salary_statistics_sj(location, api_key):
     url = "https://api.superjob.ru/2.0/vacancies/"
     unix_time = convert_to_unix_time()
     headers = {
@@ -89,11 +85,11 @@ def get_wage_sj(location, api_key):
             response.raise_for_status()
             salary_information = response.json()
             page = payload['page']
+            total_vacancies = response.json()['total']
             for job in salary_information['objects']:
                 pay_for_work = {
                                 'currency': str(job['currency']).upper().replace('RUB', 'RUR'),
                                 'from': job['payment_from'],
-                                'gross': '',
                                 'to': job['payment_to']
                                 }
                 pay = predict_rub_salary(pay_for_work)
@@ -106,7 +102,7 @@ def get_wage_sj(location, api_key):
         if vacancies_processed:
             salary = int(salary/vacancies_processed)
         statistics = {
-            'vacancies_found': response.json()['total'],
+            'vacancies_found': total_vacancies,
             'vacancies_processed': vacancies_processed,
             'average_salary': salary,
         }
@@ -116,9 +112,9 @@ def get_wage_sj(location, api_key):
 
 def display_statistics_table(statistic_wage, title):
     table = [['Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата']]
-    for item_language, element_structure in statistic_wage.items():
+    for language, element_structure in statistic_wage.items():
         found, processed, salary = element_structure.values()
-        table_row = [item_language, found, processed, salary]
+        table_row = [language, found, processed, salary]
         table.append(table_row)
     table_instance = DoubleTable(table, ' ' + title + ' ')
     table_instance.justify_columns[2] = 'center'
@@ -126,10 +122,9 @@ def display_statistics_table(statistic_wage, title):
 
 
 if __name__ == '__main__':
-    env = Env()
     load_dotenv(find_dotenv())
-    search_location = env.int('SEARCH_LOCATION_HH')
-    display_statistics_table(get_wage_hh(search_location), 'HeadHunter Moscow')
-    search_location = env.int('SEARCH_LOCATION_SJ')
-    api_key = env.str('SECRET_KEY')
-    display_statistics_table(get_wage_sj(search_location, api_key), 'SuperJob Moscow')
+    search_location = os.environ.get('SEARCH_LOCATION_HH')
+    display_statistics_table(salary_statistics_hh(search_location), 'HeadHunter Moscow')
+    search_location = os.environ.get('SEARCH_LOCATION_SJ')
+    api_key = os.environ.get('SECRET_KEY_SJ')
+    display_statistics_table(salary_statistics_sj(search_location, api_key), 'SuperJob Moscow')

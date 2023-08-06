@@ -1,5 +1,4 @@
 terminaltables==3.1.10
-environs==9.5.0
 requests==2.31.0
-load-dotenv==0.1.0
 python-dotenv==1.0.0
+environs[django]==9.3.0
