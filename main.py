@@ -31,7 +31,7 @@ def convert_to_unix_time():
     return int(time.mktime((datetime.now() - timedelta(days=30)).timetuple()))
 
 
-def salary_statistics_hh(location):
+def get_salary_statistics_hh(location):
     url = f"https://api.hh.ru/vacancies"
     wage = {}
     unix_time = convert_to_unix_time()
@@ -44,7 +44,7 @@ def salary_statistics_hh(location):
                     'page': page
                     }
         vacancies_processed = 0
-        salary_statistics = 0
+        amount_of_salaries = 0
         total_pages = 1
         while page < total_pages:
             response = requests.get(url, payload)
@@ -56,22 +56,22 @@ def salary_statistics_hh(location):
             for job in jobs:
                 salary = predict_rub_salary(job['salary'])
                 if salary:
-                    salary_statistics = salary_statistics + salary
+                    amount_of_salaries = amount_of_salaries + salary
                     vacancies_processed += 1
             page += 1
             payload['page'] = page
         if vacancies_processed:
-            salary_statistics = int(salary_statistics/vacancies_processed)
+            average_salary = int(amount_of_salaries/vacancies_processed)
         statistics = {
             'vacancies_found': vacancies_found,
             'vacancies_processed': vacancies_processed,
-            'average_salary': salary_statistics,
+            'average_salary': average_salary,
         }
         wage[language] = statistics
     return wage
 
 
-def salary_statistics_sj(location, api_key):
+def get_salary_statistics_sj(location, api_key):
     url = "https://api.superjob.ru/2.0/vacancies/"
     unix_time = convert_to_unix_time()
     headers = {
@@ -87,15 +87,15 @@ def salary_statistics_sj(location, api_key):
             'town': location,
             'page': 0
         }
-        salary_statistics = 0
+        amount_of_salaries = 0
         vacancies_processed = 0
         while True:
             response = requests.get(url, headers=headers, params=payload)
             response.raise_for_status()
-            salary = response.json()
+            work_options = response.json()
             page = payload['page']
             total_vacancies = response.json()['total']
-            for job in salary['objects']:
+            for job in work_options['objects']:
                 job_salary = {
                                 'currency': str(job['currency']).upper().replace('RUB', 'RUR'),
                                 'from': job['payment_from'],
@@ -103,17 +103,17 @@ def salary_statistics_sj(location, api_key):
                                 }
                 salary_js = predict_rub_salary(job_salary)
                 if salary_js:
-                    salary_statistics = salary_statistics + int(salary_js)
+                    amount_of_salaries = amount_of_salaries + int(salary_js)
                     vacancies_processed += 1
-            if not salary['more']:
+            if not work_options['more']:
                 break
             payload['page'] = page + 1
         if vacancies_processed:
-            salary_statistics = int(salary_statistics/vacancies_processed)
+            average_salary = int(amount_of_salaries/vacancies_processed)
         statistics = {
             'vacancies_found': total_vacancies,
             'vacancies_processed': vacancies_processed,
-            'average_salary': salary_statistics,
+            'average_salary': average_salary,
         }
         wage[language] = statistics
     return wage
@@ -133,7 +133,7 @@ def display_statistics_table(statistic_wage, title):
 if __name__ == '__main__':
     load_dotenv(find_dotenv())
     search_location = os.environ.get('SEARCH_LOCATION_HH')
-    display_statistics_table(salary_statistics_hh(search_location), 'HeadHunter Moscow')
+    display_statistics_table(get_salary_statistics_hh(search_location), 'HeadHunter Moscow')
     search_location = os.environ.get('SEARCH_LOCATION_SJ')
     api_key = os.environ.get('SECRET_KEY_SJ')
-    display_statistics_table(salary_statistics_sj(search_location, api_key), 'SuperJob Moscow')
+    display_statistics_table(get_salary_statistics_sj(search_location, api_key), 'SuperJob Moscow')
