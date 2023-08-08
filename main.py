@@ -17,11 +17,11 @@ def predict_rub_salary(vacancy: dict):
             return None
         if vacancy['from'] and vacancy['to']:
             return int((vacancy['from'] + vacancy['to']) / 2)
-        elif vacancy['from']:
-            return int(vacancy['from'] * 1.2)
-        elif vacancy['to']:
+        if not vacancy['from']:
             return int(vacancy['to'] * 0.8)
-        else:
+        if not vacancy['to']:
+            return int(vacancy['from'] * 1.2)
+        if not vacancy['from'] and not vacancy['to']:
             return None
     else:
         return None
