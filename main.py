@@ -6,9 +6,7 @@ import time
 import os
 
 INDUSTRY = 48
-# POPULAR_LANGUAGES = ['JavaScript', 'Java', 'Python', 'Ruby', 'PHP', 'C++', 'CSS', 'C#', 'GO']
-POPULAR_LANGUAGES = ['C#']
-
+POPULAR_LANGUAGES = ['JavaScript', 'Java', 'Python', 'Ruby', 'PHP', 'C++', 'CSS', 'C#', 'GO']
 
 
 def predict_rub_salary(vacancy: dict):
@@ -49,10 +47,11 @@ def get_salary_statistics_hh(location):
         while page < total_pages:
             response = requests.get(url, payload)
             response.raise_for_status()
+            job_list = response.json()
             page = payload['page']
-            vacancies_found = response.json()['found']
-            jobs = response.json()['items']
-            total_pages = response.json()['pages']
+            vacancies_found = job_list['found']
+            jobs = job_list['items']
+            total_pages = job_list['pages']
             for job in jobs:
                 salary = predict_rub_salary(job['salary'])
                 if salary:
